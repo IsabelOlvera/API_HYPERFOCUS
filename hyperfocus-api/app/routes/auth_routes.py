@@ -4,6 +4,7 @@ from app.database.db import SessionLocal
 from app.models.user import User
 from app.schemas.user_schema import UserRegister, UserLogin
 import bcrypt
+from passlib.hash import bcrypt
 from app.auth.auth_handler import create_access_token
 
 router = APIRouter(prefix="/api", tags=["Auth"])
@@ -27,7 +28,7 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
         name=user.name,
         apellido=user.apellido,
         email=user.email,
-        password=user.password,
+        password=bcrypt.hash(user.password),
         rol_id=user.rol_id,
     )
     db.add(new_user)
@@ -47,11 +48,17 @@ def check_email(payload: dict, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(data: UserLogin, db: Session = Depends(get_db)):
     usuario = db.query(User).filter(User.email == data.email).first()
+    
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    if not bcrypt.checkpw(data.password.encode('utf-8'), usuario.password.encode('utf-8')):
+    
+    if not bcrypt.verify(data.password, usuario.password):
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-
+    
     token = create_access_token({"sub": usuario.email, "id": usuario.id})
-    return {"access_token": token, "token_type": "bearer", "usuario_id": usuario.id}
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "usuario_id": usuario.id
+    }
