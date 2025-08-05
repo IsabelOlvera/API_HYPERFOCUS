@@ -1,22 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database.db import SessionLocal
+from app.database.db import get_db  # este debe extraer DB desde env
 from app.models.user import User
 from app.schemas.user_schema import UserRegister, UserLogin
-import bcrypt
 from passlib.hash import bcrypt
 from app.auth.auth_handler import create_access_token
 
 router = APIRouter(prefix="/api", tags=["Auth"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-router = APIRouter()
 
 @router.post("/register")
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
@@ -45,18 +36,19 @@ def check_email(payload: dict, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
     return {"exists": bool(user)}
 
+
 @router.post("/login")
 def login(data: UserLogin, db: Session = Depends(get_db)):
     usuario = db.query(User).filter(User.email == data.email).first()
-    
+
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
+
     if not bcrypt.verify(data.password, usuario.password):
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    
+
     token = create_access_token({"sub": usuario.email, "id": usuario.id})
-    
+
     return {
         "access_token": token,
         "token_type": "bearer",
