@@ -11,13 +11,14 @@ Base = declarative_base()
 from app.models import user, role  # mantener aquí
 
 # Lee la URL desde variable de entorno (ideal para Render)
+# IMPORTANTE: debe usar mysql+pymysql
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "mysql+pymysql://root@localhost/hyperfocus_2"  # fallback local
 )
 
-# Crea el engine
-engine = create_engine(DATABASE_URL)
+# Crea el engine con pymysql
+engine = create_engine(DATABASE_URL, echo=False, future=True)
 
 # Crea la sesión
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
